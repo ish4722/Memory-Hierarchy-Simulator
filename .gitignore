@@ -1,0 +1,14 @@
+# Build artifacts
+sim
+*.o
+*.out
+*.d
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Temporary files
+*.log
