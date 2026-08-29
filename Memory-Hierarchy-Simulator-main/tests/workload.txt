@@ -1,7 +1,0 @@
-# Simple workload: allocate, write/read
-malloc 1024
-malloc 2048
-translate 1 0x0
-write 1 0x0 42
-read 1 0x0
-stats
