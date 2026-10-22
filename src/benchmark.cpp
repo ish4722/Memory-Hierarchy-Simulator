@@ -5,6 +5,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "allocator.h"
@@ -75,10 +76,12 @@ std::vector<Workload> workloads() {
     Workload repeated{"small_hot_set", {}, false};
     Workload random{"deterministic_random", {}, false};
     Workload mixed{"mixed_read_write", {}, true};
+    Workload multi_process{"multi_process_hot_set", {}, false};
     sequential.addresses.reserve(kOperations);
     repeated.addresses.reserve(kOperations);
     random.addresses.reserve(kOperations);
     mixed.addresses.reserve(kOperations);
+    multi_process.addresses.reserve(kOperations);
 
     std::mt19937_64 rng(20261023);
     std::uniform_int_distribution<uint64_t> dist(0, 64 * kPageSize - 1);
@@ -90,11 +93,13 @@ std::vector<Workload> workloads() {
         // Fixed seed makes the random workload repeatable across runs.
         random.addresses.push_back((dist(rng) / 64) * 64);
         mixed.addresses.push_back(((i * 37) % (32 * kPageSize) / 64) * 64);
+        multi_process.addresses.push_back((i % (8 * (kPageSize / 64))) * 64);
     }
     out.push_back(std::move(sequential));
     out.push_back(std::move(repeated));
     out.push_back(std::move(random));
     out.push_back(std::move(mixed));
+    out.push_back(std::move(multi_process));
     return out;
 }
 
@@ -110,7 +115,7 @@ Result run_one(const BenchmarkConfig &cfg, const Workload &work) {
 
     const auto start = std::chrono::steady_clock::now();
     for (size_t i = 0; i < work.addresses.size(); ++i) {
-        const int pid = 1;
+        const int pid = work.name == "multi_process_hot_set" ? 1 + static_cast<int>(i % 2) : 1;
         auto pa = vm.translate(pid, work.addresses[i]);
         if (!pa) continue;
         if (work.write_every_fourth && i % 4 == 0) {
