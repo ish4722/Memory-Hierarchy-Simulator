@@ -66,10 +66,10 @@ bool CacheHierarchy::write_back_line(size_t, size_t block, const Line &line) {
     ++stats_.writebacks; ++stats_.memory_accesses; return true;
 }
 
-bool CacheHierarchy::read_block(size_t addr,std::vector<uint8_t>&data,size_t&latency,bool count_stats) {
+bool CacheHierarchy::read_block(size_t addr,std::vector<uint8_t>&data,size_t&latency,bool count_stats,bool count_l1) {
     const size_t block=l1_.block_addr(addr); latency=0; data.resize(l1_cfg_.block_size); size_t l=0;
-    if(l1_.read(block,data.data(),data.size(),l)){if(count_stats)++stats_.l1_hits;latency+=l;return true;}
-    if(count_stats)++stats_.l1_misses; latency+=l1_cfg_.hit_latency;
+    if(l1_.read(block,data.data(),data.size(),l)){if(count_stats && count_l1)++stats_.l1_hits;latency+=l;return true;}
+    if(count_stats && count_l1)++stats_.l1_misses; latency+=l1_cfg_.hit_latency;
 
     data.resize(l2_cfg_.block_size);
     if(l2_.read(block,data.data(),std::min(l2_cfg_.block_size,l1_cfg_.block_size),l)){
@@ -112,7 +112,7 @@ bool CacheHierarchy::write(size_t addr,const void *src,size_t len){
     if(l1_cfg_.allocation==AllocationPolicy::NoWriteAllocate){ if(!pm_.write(addr,src,len))return false; ++stats_.memory_accesses; stats_.total_latency+=latency+100; return true; }
 
     std::vector<uint8_t> block; size_t lower_latency=0;
-    if(!read_block(addr,block,lower_latency,true))return false;
+    if(!read_block(addr,block,lower_latency,true,false))return false;
     latency+=lower_latency;
     Line e; l1_.insert(addr,block.data(),block.size(),l1_cfg_.write_policy==WritePolicy::WriteBack,&e); if(e.valid&&e.dirty)write_back_line(1,l1_.block_addr(addr),e);
     l1_.write_hit(addr,src,len);
