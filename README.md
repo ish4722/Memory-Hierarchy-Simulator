@@ -319,7 +319,7 @@ The benchmark runs seven deterministic workloads against four cache configuratio
 | `mixed_read_write` | Deterministic line accesses with every fourth operation a write | Read/write behavior under the current write policy implementation |
 | `multi_process_hot_set` | Two PIDs alternate accesses to the same virtual-address working set | Per-process virtual mappings and TLB behavior under interleaved processes |
 | `page_pressure_300_pages` | Cycles through 300 virtual pages in 1 MiB of physical RAM | Page faults, frame reclamation, and CLOCK-like eviction under memory pressure |
-| `l1_set_conflict` | Reuses eight lines mapped to the same L1 set | Conflict misses and the effect of associativity (notably the 8-way L1 configuration) |
+| `associativity_probe` | Reuses eight virtual pages at a regular stride | How regular address strides and physical frame placement interact with cache set mapping; interpret alongside the recorded counters |
 
 | Configuration | L1 | L2 | L3 | Replacement |
 |---|---|---|---|---|
