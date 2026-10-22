@@ -309,7 +309,7 @@ make bench
 ./bench
 ```
 
-The benchmark runs seven deterministic workloads against four cache configurations (28 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
+The benchmark runs eight deterministic workloads against eight cache configurations (64 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
 
 | Workload | Pattern | What it helps investigate |
 |---|---|---|
@@ -320,6 +320,7 @@ The benchmark runs seven deterministic workloads against four cache configuratio
 | `multi_process_hot_set` | Two PIDs alternate accesses to the same virtual-address working set | Per-process virtual mappings and TLB behavior under interleaved processes |
 | `page_pressure_300_pages` | Cycles through 300 virtual pages in 1 MiB of physical RAM | Page faults, frame reclamation, and CLOCK-like eviction under memory pressure |
 | `associativity_probe` | Reuses eight virtual pages at a regular stride | How regular address strides and physical frame placement interact with cache set mapping; interpret alongside the recorded counters |
+| `spatial_locality_4B_stride` | Four-byte stride through a 64-page region | Compares spatial locality when cache line sizes vary |
 
 | Configuration | L1 | L2 | L3 | Replacement |
 |---|---|---|---|---|
@@ -327,8 +328,12 @@ The benchmark runs seven deterministic workloads against four cache configuratio
 | `small_l1` | 4 KiB, 2-way | 64 KiB, 4-way | 256 KiB, 8-way | LRU |
 | `larger_caches` | 64 KiB, 8-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU |
 | `fifo` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | FIFO |
+| `lfu` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | LFU; ties evict the oldest inserted line |
+| `block_16B` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU; all levels use 16 B lines |
+| `block_32B` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU; all levels use 32 B lines |
+| `block_128B` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU; all levels use 128 B lines |
 
-The command prints a summary table and writes detailed rows to `benchmark_results.csv` in the current working directory. L1 counters count top-level cache lookups once, including write misses; lower-level counters represent the lookups reached after an upper-level miss. A write-allocate fill no longer double-counts its internal L1 lookup. The CSV includes operation counts, TLB hits/misses and hit rate, page faults and evictions, cache-level hits/misses and hit rates, memory accesses, writebacks, total modeled latency, and host runtime in milliseconds.
+The suite compares LRU/FIFO/LFU on identical baseline cache geometries, and sweeps 16/32/64/128-byte cache lines at fixed capacities. The block-size sweep changes line size at all three levels together so the current hierarchy's line-fill assumptions remain aligned. A four-byte-stride workload exposes spatial locality. The command prints a summary table and writes detailed rows to `benchmark_results.csv` in the current working directory. L1 counters count top-level cache lookups once, including write misses; lower-level counters represent the lookups reached after an upper-level miss. A write-allocate fill no longer double-counts its internal L1 lookup. The CSV includes operation counts, TLB hits/misses and hit rate, page faults and evictions, cache-level hits/misses and hit rates, memory accesses, writebacks, total modeled latency, and host runtime in milliseconds.
 
 **Metric interpretation:** hit rate is calculated from the simulator's recorded lookup counters. The current cache implementation can perform an additional cache lookup when a write miss triggers line fill, so cache-level lookup counts are not necessarily one lookup per top-level operation. `total_modeled_latency` is the simulator's configured latency model—not measured CPU cycles. `runtime_ms` is actual host wall-clock runtime and can vary with machine load and compiler settings. Compare runs under the same build and environment; do not describe modeled latency as real hardware speedup.
 
@@ -406,7 +411,7 @@ This is a learning-oriented simulator: its counters and modeled latencies help e
 - Make address translation and page faults observable.
 - Demonstrate TLB locality and LRU eviction.
 - Explore power-of-two allocation, splitting, and buddy coalescing.
-- Compare cache hits, misses, replacement policies, write policies, and modeled latency.
+- Compare cache hits, misses, LRU/FIFO/LFU replacement policies, cache-line sizes, write policies, and modeled latency.
 - Keep components modular so individual subsystems can be inspected and improved.
 
 ---
