@@ -5,7 +5,7 @@
 #include <vector>
 #include "physical.h"
 
-enum class ReplacementPolicy { LRU, FIFO };
+enum class ReplacementPolicy { LRU, FIFO, LFU };
 enum class WritePolicy { WriteThrough, WriteBack };
 enum class AllocationPolicy { WriteAllocate, NoWriteAllocate };
 
@@ -23,7 +23,7 @@ public:
     const CacheLevelConfig &l3_config() const { return l3_cfg_; }
     void reset_stats();
 private:
-    struct Line { size_t tag=0; bool valid=false; bool dirty=false; uint64_t seq=0; std::vector<uint8_t> data; };
+    struct Line { size_t tag=0; bool valid=false; bool dirty=false; uint64_t seq=0; uint64_t frequency=1; std::vector<uint8_t> data; };
     class Level {
     public:
         Level(PhysicalMemory &pm, CacheLevelConfig cfg);
