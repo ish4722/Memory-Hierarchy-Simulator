@@ -309,7 +309,7 @@ make bench
 ./bench
 ```
 
-The benchmark runs five deterministic workloads against four cache configurations (20 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
+The benchmark runs seven deterministic workloads against four cache configurations (28 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
 
 | Workload | Pattern | What it helps investigate |
 |---|---|---|
@@ -318,6 +318,8 @@ The benchmark runs five deterministic workloads against four cache configuration
 | `deterministic_random` | Seeded pseudo-random line accesses across 64 pages | Less predictable locality |
 | `mixed_read_write` | Deterministic line accesses with every fourth operation a write | Read/write behavior under the current write policy implementation |
 | `multi_process_hot_set` | Two PIDs alternate accesses to the same virtual-address working set | Per-process virtual mappings and TLB behavior under interleaved processes |
+| `page_pressure_300_pages` | Cycles through 300 virtual pages in 1 MiB of physical RAM | Page faults, frame reclamation, and CLOCK-like eviction under memory pressure |
+| `l1_set_conflict` | Reuses eight lines mapped to the same L1 set | Conflict misses and the effect of associativity (notably the 8-way L1 configuration) |
 
 | Configuration | L1 | L2 | L3 | Replacement |
 |---|---|---|---|---|
@@ -326,7 +328,7 @@ The benchmark runs five deterministic workloads against four cache configuration
 | `larger_caches` | 64 KiB, 8-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU |
 | `fifo` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | FIFO |
 
-The command prints a summary table and writes detailed rows to `benchmark_results.csv` in the current working directory. The CSV includes operation counts, TLB hits/misses and hit rate, page faults and evictions, cache-level hits/misses and hit rates, memory accesses, writebacks, total modeled latency, and host runtime in milliseconds.
+The command prints a summary table and writes detailed rows to `benchmark_results.csv` in the current working directory. L1 counters count top-level cache lookups once, including write misses; lower-level counters represent the lookups reached after an upper-level miss. A write-allocate fill no longer double-counts its internal L1 lookup. The CSV includes operation counts, TLB hits/misses and hit rate, page faults and evictions, cache-level hits/misses and hit rates, memory accesses, writebacks, total modeled latency, and host runtime in milliseconds.
 
 **Metric interpretation:** hit rate is calculated from the simulator's recorded lookup counters. The current cache implementation can perform an additional cache lookup when a write miss triggers line fill, so cache-level lookup counts are not necessarily one lookup per top-level operation. `total_modeled_latency` is the simulator's configured latency model—not measured CPU cycles. `runtime_ms` is actual host wall-clock runtime and can vary with machine load and compiler settings. Compare runs under the same build and environment; do not describe modeled latency as real hardware speedup.
 
