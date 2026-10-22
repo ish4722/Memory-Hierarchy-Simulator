@@ -345,6 +345,32 @@ make bench
 ./bench
 ```
 
+## Benchmark results and visualizations
+
+The checked-in charts below summarize the 64 rows produced by `./bench` on one local run (12,000 operations per workload/configuration). The raw output is in `benchmark_results.csv` after running the benchmark; the figures use the CSV pasted from the October 2026 run.
+
+### Cache-line size
+
+![L1 hit rate versus cache-line size for spatial-stride and random workloads](docs/benchmark-results/block-size-hit-rate.svg)
+
+With the four-byte-stride workload, increasing line size from 16 B to 128 B raised the recorded L1 hit rate from **75.0% to 96.9%**. This is consistent with spatial locality: one fetched line can serve multiple nearby accesses. The deterministic-random workload showed little L1 change, because it has much less predictable nearby reuse.
+
+![Modeled latency versus cache-line size for the four-byte-stride workload](docs/benchmark-results/block-size-modeled-latency.svg)
+
+For that same spatial workload, modeled latency fell from **360,000 units at 16 B** to **55,500 units at 128 B** (about **84.6% lower** in this simulator's model). This is a modeled result, **not a measurement of real CPU cycles or speedup**. The experiment changes line size at all three levels together, so it does not isolate which cache level contributes most.
+
+### Replacement policies
+
+![L1 hit-rate comparison for LRU, FIFO and LFU](docs/benchmark-results/replacement-policy-hit-rate.svg)
+
+On the deterministic-random workload, L1 hit rates were close: **LRU 12.25%, FIFO 12.11%, LFU 12.48%**. On mixed read/write, LFU recorded **45.55%** versus **42.19%** for LRU and FIFO. These differences are workload-specific and modest; this small suite does not establish LFU as universally better. LFU here uses lifetime access counts without aging, with oldest-insertion tie-breaking.
+
+### Reading the stress test correctly
+
+The `page_pressure_300_pages` workload recorded **12,000 page faults and 11,744 evictions for 12,000 accesses** in every configuration. The 300-page working set exceeds the 256 physical frames available in 1 MiB of RAM at 4 KiB per page, so the cyclic pattern thrashes. Treat it as a virtual-memory pressure demonstration, not as a useful cache-policy comparison. Likewise, an L3 hit rate of 0% can simply mean L2 caught all accesses that reached it; lower-level counters are conditional on misses above them.
+
+**Reproducibility note:** host `runtime_ms` values vary with the machine, compiler, and system load. Compare modeled latency and hit/miss counters for the same deterministic workload, and rerun before making performance claims. These are educational simulator metrics, not hardware performance-counter measurements.
+
 ## Interactive command reference
 
 Start `./sim`, then enter commands in the terminal.
