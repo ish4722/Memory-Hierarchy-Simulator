@@ -77,11 +77,15 @@ std::vector<Workload> workloads() {
     Workload random{"deterministic_random", {}, false};
     Workload mixed{"mixed_read_write", {}, true};
     Workload multi_process{"multi_process_hot_set", {}, false};
+    Workload page_pressure{"page_pressure_300_pages", {}, false};
+    Workload l1_conflict{"l1_set_conflict", {}, false};
     sequential.addresses.reserve(kOperations);
     repeated.addresses.reserve(kOperations);
     random.addresses.reserve(kOperations);
     mixed.addresses.reserve(kOperations);
     multi_process.addresses.reserve(kOperations);
+    page_pressure.addresses.reserve(kOperations);
+    l1_conflict.addresses.reserve(kOperations);
 
     std::mt19937_64 rng(20261023);
     std::uniform_int_distribution<uint64_t> dist(0, 64 * kPageSize - 1);
@@ -94,12 +98,17 @@ std::vector<Workload> workloads() {
         random.addresses.push_back((dist(rng) / 64) * 64);
         mixed.addresses.push_back(((i * 37) % (32 * kPageSize) / 64) * 64);
         multi_process.addresses.push_back((i % (8 * (kPageSize / 64))) * 64);
+        page_pressure.addresses.push_back((i % 300) * kPageSize);
+        // Eight lines mapping to the same L1 set in all supplied configurations.
+        l1_conflict.addresses.push_back((i % 8) * 128 * 64);
     }
     out.push_back(std::move(sequential));
     out.push_back(std::move(repeated));
     out.push_back(std::move(random));
     out.push_back(std::move(mixed));
     out.push_back(std::move(multi_process));
+    out.push_back(std::move(page_pressure));
+    out.push_back(std::move(l1_conflict));
     return out;
 }
 
