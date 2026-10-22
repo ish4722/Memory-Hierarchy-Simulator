@@ -66,7 +66,23 @@ std::vector<BenchmarkConfig> configs() {
         {"fifo",
          {32 * 1024, 64, 4, RP::FIFO, WP::WriteThrough, AP::WriteAllocate, 1},
          {256 * 1024, 64, 8, RP::FIFO, WP::WriteThrough, AP::WriteAllocate, 4},
-         {512 * 1024, 64, 16, RP::FIFO, WP::WriteBack, AP::WriteAllocate, 12}}
+         {512 * 1024, 64, 16, RP::FIFO, WP::WriteBack, AP::WriteAllocate, 12}},
+        {"lfu",
+         {32 * 1024, 64, 4, RP::LFU, WP::WriteThrough, AP::WriteAllocate, 1},
+         {256 * 1024, 64, 8, RP::LFU, WP::WriteThrough, AP::WriteAllocate, 4},
+         {512 * 1024, 64, 16, RP::LFU, WP::WriteBack, AP::WriteAllocate, 12}},
+        {"block_16B",
+         {32 * 1024, 16, 4, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 1},
+         {256 * 1024, 16, 8, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 4},
+         {512 * 1024, 16, 16, RP::LRU, WP::WriteBack, AP::WriteAllocate, 12}},
+        {"block_32B",
+         {32 * 1024, 32, 4, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 1},
+         {256 * 1024, 32, 8, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 4},
+         {512 * 1024, 32, 16, RP::LRU, WP::WriteBack, AP::WriteAllocate, 12}},
+        {"block_128B",
+         {32 * 1024, 128, 4, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 1},
+         {256 * 1024, 128, 8, RP::LRU, WP::WriteThrough, AP::WriteAllocate, 4},
+         {512 * 1024, 128, 16, RP::LRU, WP::WriteBack, AP::WriteAllocate, 12}}
     };
 }
 
@@ -79,6 +95,7 @@ std::vector<Workload> workloads() {
     Workload multi_process{"multi_process_hot_set", {}, false};
     Workload page_pressure{"page_pressure_300_pages", {}, false};
     Workload l1_conflict{"associativity_probe", {}, false};
+    Workload spatial{"spatial_locality_4B_stride", {}, false};
     sequential.addresses.reserve(kOperations);
     repeated.addresses.reserve(kOperations);
     random.addresses.reserve(kOperations);
@@ -86,6 +103,7 @@ std::vector<Workload> workloads() {
     multi_process.addresses.reserve(kOperations);
     page_pressure.addresses.reserve(kOperations);
     l1_conflict.addresses.reserve(kOperations);
+    spatial.addresses.reserve(kOperations);
 
     std::mt19937_64 rng(20261023);
     std::uniform_int_distribution<uint64_t> dist(0, 64 * kPageSize - 1);
@@ -101,6 +119,8 @@ std::vector<Workload> workloads() {
         page_pressure.addresses.push_back((i % 300) * kPageSize);
         // Eight virtual pages with a regular stride; physical frame assignment affects set mapping.
         l1_conflict.addresses.push_back((i % 8) * 128 * 64);
+        // Four-byte stride gives smaller lines more opportunities to reuse nearby data.
+        spatial.addresses.push_back((i * 4) % (64 * kPageSize));
     }
     out.push_back(std::move(sequential));
     out.push_back(std::move(repeated));
@@ -109,6 +129,7 @@ std::vector<Workload> workloads() {
     out.push_back(std::move(multi_process));
     out.push_back(std::move(page_pressure));
     out.push_back(std::move(l1_conflict));
+    out.push_back(std::move(spatial));
     return out;
 }
 
@@ -220,5 +241,7 @@ int main() {
               << results.size() << " configuration/workload combinations).\n";
     std::cout << "Note: cache counters reflect current simulator instrumentation; "
                  "they are experimental metrics, not real CPU performance counters.\n";
+    std::cout << "Replacement policies: LRU, FIFO, LFU (LFU ties evict the oldest inserted line).\n";
+    std::cout << "Block-size configurations vary all three cache levels together at fixed capacities.\n";
     return 0;
 }
