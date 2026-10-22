@@ -300,6 +300,43 @@ make
 ./sim
 ```
 
+## Repeatable benchmarks
+
+Build and run the benchmark executable separately from the interactive simulator:
+
+```sh
+make bench
+./bench
+```
+
+The benchmark runs four deterministic workloads against four cache configurations (16 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
+
+| Workload | Pattern | What it helps investigate |
+|---|---|---|
+| `sequential_stream` | Sequential 64-byte cache-line strides across a 64-page region | Streaming access behavior |
+| `small_hot_set` | Repeated accesses within an 8-page working set | Temporal locality and cache reuse |
+| `deterministic_random` | Seeded pseudo-random line accesses across 64 pages | Less predictable locality |
+| `mixed_read_write` | Deterministic line accesses with every fourth operation a write | Read/write behavior under the current write policy implementation |
+
+| Configuration | L1 | L2 | L3 | Replacement |
+|---|---|---|---|---|
+| `baseline` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU |
+| `small_l1` | 4 KiB, 2-way | 64 KiB, 4-way | 256 KiB, 8-way | LRU |
+| `larger_caches` | 64 KiB, 8-way | 256 KiB, 8-way | 512 KiB, 16-way | LRU |
+| `fifo` | 32 KiB, 4-way | 256 KiB, 8-way | 512 KiB, 16-way | FIFO |
+
+The command prints a summary table and writes detailed rows to `benchmark_results.csv` in the current working directory. The CSV includes operation counts, TLB hits/misses and hit rate, page faults and evictions, cache-level hits/misses and hit rates, memory accesses, writebacks, total modeled latency, and host runtime in milliseconds.
+
+**Metric interpretation:** hit rate is calculated from the simulator's recorded lookup counters. The current cache implementation can perform an additional cache lookup when a write miss triggers line fill, so cache-level lookup counts are not necessarily one lookup per top-level operation. `total_modeled_latency` is the simulator's configured latency model—not measured CPU cycles. `runtime_ms` is actual host wall-clock runtime and can vary with machine load and compiler settings. Compare runs under the same build and environment; do not describe modeled latency as real hardware speedup.
+
+For a repeatable local run, use a fresh build and save the terminal output alongside `benchmark_results.csv`:
+
+```sh
+make clean
+make bench
+./bench
+```
+
 ## Interactive command reference
 
 Start `./sim`, then enter commands in the terminal.
