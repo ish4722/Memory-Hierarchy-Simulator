@@ -9,6 +9,7 @@ CacheHierarchy::Level::Level(PhysicalMemory &pm, CacheLevelConfig cfg) : pm_(pm)
 
 void CacheHierarchy::Level::touch(std::list<Line>::iterator it, std::list<Line> &set) {
     if (cfg_.replacement == ReplacementPolicy::LRU) set.splice(set.begin(), set, it);
+    else if (cfg_.replacement == ReplacementPolicy::LFU) ++it->frequency;
 }
 
 bool CacheHierarchy::Level::read(size_t addr, void *dst, size_t len, size_t &latency) {
@@ -50,7 +51,19 @@ bool CacheHierarchy::Level::insert(size_t addr,const void *data,size_t len,bool 
         std::memcpy(it->data.data(),data,std::min(len,it->data.size())); it->dirty=dirty; touch(it,set); return true;
     }
     if(set.size()>=cfg_.ways){
-        auto it=(cfg_.replacement==ReplacementPolicy::LRU) ? std::prev(set.end()) : std::min_element(set.begin(),set.end(),[](const Line&a,const Line&b){return a.seq<b.seq;});
+        auto it = set.end();
+        if (cfg_.replacement == ReplacementPolicy::LRU) {
+            it = std::prev(set.end());
+        } else if (cfg_.replacement == ReplacementPolicy::FIFO) {
+            it = std::min_element(set.begin(), set.end(),
+                [](const Line &a, const Line &b) { return a.seq < b.seq; });
+        } else {
+            // LFU evicts the least frequently accessed line; ties use oldest insertion.
+            it = std::min_element(set.begin(), set.end(),
+                [](const Line &a, const Line &b) {
+                    return a.frequency != b.frequency ? a.frequency < b.frequency : a.seq < b.seq;
+                });
+        }
         if(evicted) *evicted=*it; set.erase(it);
     }
     Line line; line.tag=t; line.valid=true; line.dirty=dirty; line.seq=tick_++; line.data.resize(cfg_.block_size,0);
