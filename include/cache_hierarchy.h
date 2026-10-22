@@ -39,6 +39,6 @@ private:
         void touch(std::list<Line>::iterator it,std::list<Line>&set);
     };
     PhysicalMemory &pm_; CacheLevelConfig l1_cfg_,l2_cfg_,l3_cfg_; Level l1_,l2_,l3_; CacheHierarchyStats stats_;
-    bool read_block(size_t addr,std::vector<uint8_t>&data,size_t&latency,bool count_stats=true);
+    bool read_block(size_t addr,std::vector<uint8_t>&data,size_t&latency,bool count_stats=true,bool count_l1=true);
     bool write_back_line(size_t level,size_t block,const Line&line);
 };
