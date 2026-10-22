@@ -309,7 +309,7 @@ make bench
 ./bench
 ```
 
-The benchmark runs four deterministic workloads against four cache configurations (16 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
+The benchmark runs five deterministic workloads against four cache configurations (20 combinations total). Every combination starts with fresh simulated RAM, allocator, VM, TLB, and caches, so previous cases do not contaminate later counters.
 
 | Workload | Pattern | What it helps investigate |
 |---|---|---|
@@ -317,6 +317,7 @@ The benchmark runs four deterministic workloads against four cache configuration
 | `small_hot_set` | Repeated accesses within an 8-page working set | Temporal locality and cache reuse |
 | `deterministic_random` | Seeded pseudo-random line accesses across 64 pages | Less predictable locality |
 | `mixed_read_write` | Deterministic line accesses with every fourth operation a write | Read/write behavior under the current write policy implementation |
+| `multi_process_hot_set` | Two PIDs alternate accesses to the same virtual-address working set | Per-process virtual mappings and TLB behavior under interleaved processes |
 
 | Configuration | L1 | L2 | L3 | Replacement |
 |---|---|---|---|---|
